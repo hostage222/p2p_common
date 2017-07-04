@@ -6,6 +6,9 @@
 #include <utility>
 #include <boost/asio.hpp>
 
+#include <cstring>
+#include <limits>
+
 using namespace std;
 
 namespace p2p
@@ -14,11 +17,62 @@ namespace p2p
 size_t analyze_buf(const buffer_type &buf, size_t bytes, bool *valid = 0);
 bool has_special_symbols(const string &param);
 bool append_symbol(buffer_type &buf, size_t &bytes, char symbol);
+int read_version_num(const string &s, size_t &start);
 
 string to_string(const boost::asio::ip::tcp::endpoint &endpoint)
 {
     return endpoint.address().to_string() + ":" +
             std::to_string(endpoint.port());
+}
+
+string to_string(version_type version)
+{
+    return std::to_string(version.major) + "." +
+            std::to_string(version.minor) + "." +
+            std::to_string(version.patch);
+}
+
+int string_to_int(const string &s, bool &ok)
+{
+    if (s.empty())
+    {
+        ok = false;
+        return 0;
+    }
+
+    const char *c = s.c_str();
+    char *end;
+
+    long int r = strtol(c, &end, 10);
+
+    if (end != c + s.size())
+    {
+        ok = false;
+        return 0;
+    }
+
+    if (r < numeric_limits<int>::min() ||
+        r > numeric_limits<int>::max())
+    {
+        ok = false;
+        return 0;
+    }
+
+    ok = true;
+    return r;
+}
+
+version_type string_to_version(const string &s)
+{
+    size_t start = 0;
+    version_type res;
+    res.major = read_version_num(s, start);
+    res.minor = read_version_num(s, start);
+    res.patch = read_version_num(s, start);
+    if (start < s.size())
+    {
+        throw invalid_version_format_exception{};
+    }
 }
 
 size_t read_complete(const buffer_type &buf, size_t bytes)
@@ -33,20 +87,20 @@ bool is_valid_message(const buffer_type &buf, size_t bytes)
     return res;
 }
 
-buf_sequence get_buf_sequence(buffer_type &buf, size_t bytes)
+buf_sequence get_buf_sequence(const buffer_type &buf, size_t bytes)
 {
     if (bytes == 0)
     {
-        return buf_sequence{buf.begin(), buf.begin()};
+        return buf_sequence{buf.cbegin(), buf.cbegin()};
     }
 
     if (buf[bytes - 1] == '\n')
     {
-        return buf_sequence{buf.begin(), buf.begin() + bytes - 1};
+        return buf_sequence{buf.cbegin(), buf.cbegin() + bytes - 1};
     }
     else
     {
-        return buf_sequence{buf.begin(), buf.begin() + bytes};
+        return buf_sequence{buf.cbegin(), buf.cbegin() + bytes};
     }
 }
 
@@ -285,6 +339,11 @@ bool append_param(buffer_type &buf, size_t &bytes, const string &param)
     return true;
 }
 
+bool finalize(buffer_type &buf, size_t &bytes)
+{
+    return append_symbol(buf, bytes, '\n');
+}
+
 size_t analyze_buf(const buffer_type &buf, size_t bytes, bool *valid)
 {
     bool spec_symbol = false;
@@ -363,11 +422,25 @@ bool append_symbol(buffer_type &buf, size_t &bytes, char symbol)
     return true;
 }
 
-string to_string(version_type version)
+int read_version_num(const string &s, size_t &start)
 {
-    return std::to_string(version.major) + "." +
-            std::to_string(version.minor) + "." +
-            std::to_string(version.patch);
+    size_t p = s.find('.', start);
+    if (p == string::npos)
+    {
+        p = s.size();
+    }
+
+    bool ok;
+    int res = string_to_int(s.substr(start, p - start), ok);
+    if (ok)
+    {
+        start = p + 1;
+        return res;
+    }
+    else
+    {
+        throw invalid_version_format_exception{};
+    }
 }
 
 }//p2p

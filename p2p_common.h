@@ -21,6 +21,10 @@ using friend_id_type = std::string;
 std::string to_string(const boost::asio::ip::tcp::endpoint &endpoint);
 std::string to_string(version_type version);
 
+int string_to_int(const std::string &s, bool &ok);
+struct invalid_version_format_exception{};
+version_type string_to_version(const std::string &s);
+
 /*
  * Формат сообщения: "команда [данные]\n" (без кавычек);
  * данные могут содержать любое количество параметров, разделённых пробелом;
@@ -31,13 +35,13 @@ std::string to_string(version_type version);
  */
 constexpr size_t MAX_BUFFER_SIZE = 10000;
 using buffer_type = std::array<uint8_t, MAX_BUFFER_SIZE>;
-using buf_iterator = buffer_type::iterator;
+using buf_iterator = buffer_type::const_iterator;
 using buf_sequence = std::pair<buf_iterator, buf_iterator>;
 
 size_t read_complete(const buffer_type &buf, size_t bytes);
 bool is_valid_message(const buffer_type &buf, size_t bytes);
 
-buf_sequence get_buf_sequence(buffer_type &buf, size_t bytes);
+buf_sequence get_buf_sequence(const buffer_type &buf, size_t bytes);
 bool is_empty(buf_sequence buf);
 
 struct invalid_token_exception {};
@@ -47,6 +51,7 @@ std::string read_string(buf_sequence &buf);
 
 bool write_command(buffer_type &buf, size_t &bytes, const std::string &cmd);
 bool append_param(buffer_type &buf, size_t &bytes, const std::string &param);
+bool finalize(buffer_type &buf, size_t &bytes);
 
 const std::string GET_VERSION = "GET_VERSION";
 
