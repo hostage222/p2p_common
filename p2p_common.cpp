@@ -73,6 +73,7 @@ version_type string_to_version(const string &s)
     {
         throw invalid_version_format_exception{};
     }
+    return res;
 }
 
 size_t read_complete(const buffer_type &buf, size_t bytes)

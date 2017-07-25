@@ -54,6 +54,9 @@ bool append_param(buffer_type &buf, size_t &bytes, const std::string &param);
 bool finalize(buffer_type &buf, size_t &bytes);
 
 const std::string GET_VERSION = "GET_VERSION";
+const std::string REGISTER = "REGISTER";
+const std::string UNREGISTER = "UNREGISTER";
+const std::string AUTORIZE = "AUTORIZE";
 
 const std::string INVALID_FORMAT = "INVALID_FORMAT";
 const std::string INVALID_COMMAND = "INVALID_COMMAND";
